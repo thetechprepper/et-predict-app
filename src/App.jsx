@@ -28,13 +28,13 @@ function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [tileBaseUrl, setTileBaseUrl] = useState(null);
 
-  // Callsign Search
+  // Callsign search state
   const [searchCallsign, setSearchCallsign] = useState('');
   const [searchResult, setSearchResult] = useState(null);
   const [searchError, setSearchError] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
 
-  // Lat/Lon Search
+  // Lat/Lon search state
   const [latInput, setLatInput] = useState('');
   const [lonInput, setLonInput] = useState('');
   const [latLonError, setLatLonError] = useState(null);
@@ -95,6 +95,7 @@ function App() {
     setSearchError(null);
     setIsSearching(true);
     setSearchResult(null);
+    setLatLonError(null);
 
     try {
       const response = await fetch(
@@ -112,7 +113,7 @@ function App() {
       }
     } catch (err) {
       console.error('Search error:', err);
-      setSearchError('Callsign search failed.');
+      setSearchError('Callsign not found.');
     } finally {
       setIsSearching(false);
     }
