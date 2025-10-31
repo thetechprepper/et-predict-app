@@ -95,7 +95,9 @@ function App() {
     setSearchError(null);
     setIsSearching(true);
     setSearchResult(null);
+
     setLatLonError(null);
+    setLatLonMarker(null);
 
     try {
       const response = await fetch(
@@ -122,6 +124,10 @@ function App() {
   // Handle lat/lon search
   const handleLatLonSearch = () => {
     setLatLonError(null);
+
+    setSearchError(null);
+    setSearchResult(null);
+
     const lat = parseFloat(latInput);
     const lon = parseFloat(lonInput);
 
@@ -210,6 +216,7 @@ function App() {
                   <Text UNSAFE_style={{ color: 'red' }}>{searchError}</Text>
                 )}
 
+                {/* Callsign result info */}
                 {searchResult && (
                   <View
                     backgroundColor="gray-200"
@@ -226,6 +233,30 @@ function App() {
                     <Text>Bearing: {searchResult.bearing}°</Text>
                   </View>
                 )}
+
+                {/* Lat/lon result info */}
+                {latLonMarker && (
+                  <View
+                    backgroundColor="gray-200"
+                    padding="size-100"
+                    borderRadius="regular"
+                    marginTop="size-200"
+                  >
+                    <Text><b>Coordinates</b></Text><br />
+                    <Text>Lat/Lon: {latInput}, {lonInput}</Text><br />
+                    <Text>Grid: TODO</Text><br />
+                    <Text>Distance: TODO</Text><br />
+                    <Text>Bearing: TODO</Text>
+		    {/*
+                    <Text>
+                      Distance from you: {(
+                        haversineDistance(myPosition, [coordResult.lat, coordResult.lon])
+                      ).toFixed(2)} km
+                    </Text>
+		    */}
+                  </View>
+                )}
+		  
               </Flex>
             </View>
           )}
@@ -255,7 +286,7 @@ function App() {
               padding="size-50"
             >
               <Text>
-                Your Position: {myPosition[0].toFixed(4)},{myPosition[1].toFixed(5)}
+                Your Position: DEMO {/* {myPosition[0].toFixed(4)},{myPosition[1].toFixed(5)} */}
               </Text>
 	    </View>
 
