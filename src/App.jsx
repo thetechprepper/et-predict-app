@@ -2,12 +2,28 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActionButton,
   Button,
+  ButtonGroup,
+  Content,
+  Divider,
+  Dialog,
+  DialogTrigger,
   Flex,
+  Heading,
+  Item,
   Provider,
-  Text,
-  View,
+  Tabs,
+  TabList,
+  TabPanels,
+  TableView,
+  TableHeader,
+  Column,
+  TableBody,
+  Row,
+  Cell,
   SearchField,
+  Text,
   TextField,
+  View,
   defaultTheme,
 } from '@adobe/react-spectrum';
 import Minimize from '@spectrum-icons/workflow/Minimize';
@@ -19,7 +35,6 @@ import MyPosition from './MyPosition.jsx';
 import './App.css';
 
 function App() {
-
   const [myPosition, setMyPosition] = useState([33.0, -112.0]);
   const [center, setCenter] = useState([33.0, -112.0]);
   const [zoom, setZoom] = useState(10);
@@ -39,6 +54,11 @@ function App() {
   const [lonInput, setLonInput] = useState('');
   const [latLonError, setLatLonError] = useState(null);
   const [latLonMarker, setLatLonMarker] = useState(null);
+
+  // Prediction state
+  const [isPredicting, setIsPredicting] = useState(false);
+  const [voacapResults, setVoacapResults] = useState(null);
+  const [voacapError, setVoacapError] = useState(null);
 
   // Load default location
   useEffect(() => {
@@ -124,7 +144,6 @@ function App() {
   // Handle lat/lon search
   const handleLatLonSearch = () => {
     setLatLonError(null);
-
     setSearchError(null);
     setSearchResult(null);
 
@@ -146,6 +165,49 @@ function App() {
     setZoom(10);
   };
 
+  // Determine target coordinates
+  const getTargetCoords = () => {
+    if (searchResult) return [searchResult.lat, searchResult.lon];
+    if (latLonMarker) return latLonMarker;
+    return null;
+  };
+
+  // Mock VOACAP prediction handler
+  const handlePredict = async () => {
+    const target = getTargetCoords();
+    if (!target) return;
+
+    setIsPredicting(true);
+    setVoacapError(null);
+    setVoacapResults(null);
+
+    try {
+      // Simulate delay
+      await new Promise((resolve) => setTimeout(resolve, 800));
+
+      // Mock VOACAP-like data
+      const mockData = {
+        now: [
+          { name: '40m', reliability: 92, snr: 28 },
+          { name: '30m', reliability: 85, snr: 24 },
+          { name: '20m', reliability: 78, snr: 20 },
+        ],
+        future: [
+          { time: '2025-11-02T08:00Z', bestBand: '20m', reliability: 80 },
+          { time: '2025-11-02T12:00Z', bestBand: '17m', reliability: 75 },
+          { time: '2025-11-02T18:00Z', bestBand: '15m', reliability: 82 },
+        ],
+      };
+
+      setVoacapResults(mockData);
+    } catch (err) {
+      console.error(err);
+      setVoacapError('Failed to get prediction.');
+    } finally {
+      setIsPredicting(false);
+    }
+  };
+
   return (
     <Provider theme={defaultTheme}>
       <Flex direction="column" height="100vh">
@@ -154,11 +216,11 @@ function App() {
           {sidebarOpen && (
             <View backgroundColor="gray-100" padding="size-200" width="size-4600">
               <Flex direction="column" gap="size-200">
-
                 {/* Top row: Hide + MyPosition */}
                 <Flex direction="row" gap="size-200" alignItems="center">
                   <ActionButton onPress={() => setSidebarOpen(false)} aria-label="Hide Panel">
-                    <Minimize /><Text>Hide</Text>
+                    <Minimize />
+                    <Text>Hide</Text>
                   </ActionButton>
                   <MyPosition
                     setMyPosition={setMyPosition}
@@ -177,11 +239,7 @@ function App() {
                     onSubmit={handleSearch}
                     width="100%"
                   />
-                  <Button
-                    variant="cta"
-                    onPress={handleSearch}
-                    isDisabled={isSearching}
-                  >
+                  <Button variant="cta" onPress={handleSearch} isDisabled={isSearching}>
                     {isSearching ? 'Searching...' : 'Search'}
                   </Button>
                 </Flex>
@@ -207,56 +265,124 @@ function App() {
                   </Button>
                 </Flex>
 
-                {latLonError && (
-                  <Text UNSAFE_style={{ color: 'red' }}>{latLonError}</Text>
-                )}
+                {latLonError && <Text UNSAFE_style={{ color: 'red' }}>{latLonError}</Text>}
+                {searchError && <Text UNSAFE_style={{ color: 'red' }}>{searchError}</Text>}
 
                 {/* Callsign Result */}
-                {searchError && (
-                  <Text UNSAFE_style={{ color: 'red' }}>{searchError}</Text>
-                )}
-
-                {/* Callsign result info */}
                 {searchResult && (
-                  <View
-                    backgroundColor="gray-200"
-                    padding="size-100"
-                    borderRadius="regular"
-                    marginTop="size-200"
-                  >
-                    <Text><b>{searchResult.firstName}</b> {searchResult.callsign}</Text><br />
-                    <Text>{searchResult.city}, {searchResult.state} {searchResult.zip}</Text><br />
-                    <Text>Grid: {searchResult.grid}</Text><br />
-                    <Text>Lat/Lon: {searchResult.lat.toFixed(4)}, {searchResult.lon.toFixed(4)}</Text><br />
-                    <Text>Alt: {searchResult.alt} m</Text><br />
-                    <Text>Distance: {searchResult.distance.toFixed(2)} mi</Text><br />
+                  <View backgroundColor="gray-200" padding="size-100" borderRadius="regular" marginTop="size-200">
+                    <Text>
+                      <b>{searchResult.firstName}</b> {searchResult.callsign}
+                    </Text>
+                    <br />
+                    <Text>
+                      {searchResult.city}, {searchResult.state} {searchResult.zip}
+                    </Text>
+                    <br />
+                    <Text>Grid: {searchResult.grid}</Text>
+                    <br />
+                    <Text>
+                      Lat/Lon: {searchResult.lat.toFixed(4)}, {searchResult.lon.toFixed(4)}
+                    </Text>
+                    <br />
+                    <Text>Alt: {searchResult.alt} m</Text>
+                    <br />
+                    <Text>Distance: {searchResult.distance.toFixed(2)} mi</Text>
+                    <br />
                     <Text>Bearing: {searchResult.bearing}°</Text>
                   </View>
                 )}
 
                 {/* Lat/lon result info */}
                 {latLonMarker && (
-                  <View
-                    backgroundColor="gray-200"
-                    padding="size-100"
-                    borderRadius="regular"
-                    marginTop="size-200"
-                  >
-                    <Text><b>Coordinates</b></Text><br />
-                    <Text>Lat/Lon: {latInput}, {lonInput}</Text><br />
-                    <Text>Grid: TODO</Text><br />
-                    <Text>Distance: TODO</Text><br />
-                    <Text>Bearing: TODO</Text>
-		    {/*
+                  <View backgroundColor="gray-200" padding="size-100" borderRadius="regular" marginTop="size-200">
                     <Text>
-                      Distance from you: {(
-                        haversineDistance(myPosition, [coordResult.lat, coordResult.lon])
-                      ).toFixed(2)} km
+                      <b>Coordinates</b>
                     </Text>
-		    */}
+                    <br />
+                    <Text>
+                      Lat/Lon: {latInput}, {lonInput}
+                    </Text>
+                    <br />
+                    <Text>Grid: TODO</Text>
+                    <br />
+                    <Text>Distance: TODO</Text>
+                    <br />
+                    <Text>Bearing: TODO</Text>
                   </View>
                 )}
-		  
+
+                {/* Predict Button + Modal */}
+                {(searchResult || latLonMarker) && (
+                  <DialogTrigger onOpenChange={handlePredict}>
+                    <Button variant="cta" isDisabled={isPredicting}>
+                      {isPredicting ? 'Predicting...' : 'Predict'}
+                    </Button>
+                    {(close) => (
+                      <Dialog>
+                        <Heading>HF Prediction</Heading>
+                        <Divider />
+                        <Content>
+                          {voacapError && <Text color="negative">{voacapError}</Text>}
+
+                          {!voacapResults && !voacapError && (
+                            <Text>Running prediction...</Text>
+                          )}
+
+                          {voacapResults && (
+                            <Tabs aria-label="VOACAP Results" defaultSelectedKey="now">
+                              <TabList>
+                                <Item key="now">Now</Item>
+                                <Item key="later">Later</Item>
+                              </TabList>
+                              <TabPanels>
+                                <Item key="now">
+                                  <TableView aria-label="Now Bands" width="100%">
+                                    <TableHeader>
+                                      <Column>Band</Column>
+                                      <Column>Reliability</Column>
+                                      <Column>Signal</Column>
+                                    </TableHeader>
+                                    <TableBody>
+                                      {voacapResults.now.map((band) => (
+                                        <Row key={band.name}>
+                                          <Cell>{band.name}</Cell>
+                                          <Cell>{band.reliability}%</Cell>
+                                          <Cell>{band.snr} dB</Cell>
+                                        </Row>
+                                      ))}
+                                    </TableBody>
+                                  </TableView>
+                                </Item>
+                                <Item key="later">
+                                  <TableView aria-label="Later Bands" width="100%">
+                                    <TableHeader>
+                                      <Column>Time (UTC)</Column>
+                                      <Column>Best Band</Column>
+                                      <Column>Reliability</Column>
+                                    </TableHeader>
+                                    <TableBody>
+                                      {voacapResults.future.map((entry) => (
+                                        <Row key={entry.time}>
+                                          <Cell>{entry.time}</Cell>
+                                          <Cell>{entry.bestBand}</Cell>
+                                          <Cell>{entry.reliability}%</Cell>
+                                        </Row>
+                                      ))}
+                                    </TableBody>
+                                  </TableView>
+                                </Item>
+                              </TabPanels>
+                            </Tabs>
+                          )}
+                        </Content>
+			<ButtonGroup>
+                          <Button variant="secondary" onPress={close}>Close</Button>
+			</ButtonGroup>
+                      </Dialog>
+                    )}
+                  </DialogTrigger>
+                )}
               </Flex>
             </View>
           )}
@@ -268,27 +394,16 @@ function App() {
                 <ActionButton onPress={() => setSidebarOpen(true)} aria-label="Show Panel">
                   <ShowMenu />
                 </ActionButton>
-                <MyPosition
-                  setMyPosition={setMyPosition}
-                  setCenter={setCenter}
-                  showText={false}
-                />
+                <MyPosition setMyPosition={setMyPosition} setCenter={setCenter} showText={false} />
               </Flex>
             </View>
           )}
 
           {/* Map */}
           <View flexGrow={1}>
-	    <View
-              backgroundColor="gray-200"
-              borderWidth="thin"
-              borderColor="dark"
-              padding="size-50"
-            >
-              <Text>
-                Your Position: DEMO {/* {myPosition[0].toFixed(4)},{myPosition[1].toFixed(5)} */}
-              </Text>
-	    </View>
+            <View backgroundColor="gray-200" borderWidth="thin" borderColor="dark" padding="size-50">
+              <Text>Your Position: {myPosition[0].toFixed(4)},{myPosition[1].toFixed(5)}</Text>
+            </View>
 
             <Map
               attributionPrefix="The Tech Prepper | Pigeon Maps"
@@ -304,9 +419,7 @@ function App() {
               }}
             >
               <ZoomControl />
-              {/* My Position */}
               <Marker anchor={myPosition} />
-              {/* Callsign Marker */}
               {searchResult && (
                 <Marker
                   anchor={[searchResult.lat, searchResult.lon]}
@@ -314,13 +427,7 @@ function App() {
                   color="#e03e3e"
                 />
               )}
-              {/* Lat/Lon Marker */}
-              {latLonMarker && (
-                <Marker
-                  anchor={latLonMarker}
-                  color="#007aff"
-                />
-              )}
+              {latLonMarker && <Marker anchor={latLonMarker} color="#007aff" />}
             </Map>
           </View>
         </Flex>
