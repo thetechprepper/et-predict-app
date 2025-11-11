@@ -60,6 +60,9 @@ function App() {
   const [voacapResults, setVoacapResults] = useState(null);
   const [voacapError, setVoacapError] = useState(null);
 
+  // Minimum reliability threshold for displaying predictions
+  const MIN_RELIABILITY = 80;
+
   // Load default location
   useEffect(() => {
     const fetchDefaultGrid = async () => {
@@ -379,15 +382,17 @@ function App() {
                                       <Column>Reliability</Column>
                                       <Column>Signal</Column>
                                     </TableHeader>
-                                    <TableBody>
-                                      {voacapResults.now.map((band) => (
+				  <TableBody>
+                                    {voacapResults.now
+                                      .filter((band) => band.reliability >= MIN_RELIABILITY)
+                                      .map((band) => (
                                         <Row key={band.name}>
                                           <Cell>{band.name}</Cell>
                                           <Cell>{band.reliability}%</Cell>
                                           <Cell>{band.snr} dB</Cell>
-                                        </Row>
-                                      ))}
-                                    </TableBody>
+                                       </Row>
+                                     ))}
+                                   </TableBody>
                                   </TableView>
                                 </Item>
                                 <Item key="later">
@@ -398,7 +403,9 @@ function App() {
                                       <Column>Reliability</Column>
                                     </TableHeader>
                                     <TableBody>
-                                      {voacapResults.future.map((entry) => (
+                                      {voacapResults.future
+                                        .filter((entry) => entry.reliability >= MIN_RELIABILITY)
+                                        .map((entry) => (
                                         <Row key={entry.time}>
                                           <Cell>{entry.time}</Cell>
                                           <Cell>{entry.bestBand}</Cell>
