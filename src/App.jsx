@@ -34,7 +34,7 @@ import { Map, Marker, ZoomControl } from 'pigeon-maps';
 import { isValidLatLon } from './utils';
 import { ADSB_SERVICE, AIRCRAFT_SERVICE, CALLSIGN_SERVICE, GEO_SERVICE, MAP_SERVICE, VOACAP_SERVICE } from './config';
 import MyPosition from './MyPosition.jsx';
-import { haversineDistance } from './utils/distance';
+import { haversineDistance, maidenhead } from './utils/distance';
 import './App.css';
 
 function App() {
@@ -353,7 +353,7 @@ function App() {
                     <br />
                     <Text>Lat/Lon: {latInput}, {lonInput}</Text>
                     <br />
-                    <Text>Grid: TODO</Text>
+		    <Text>Grid: {maidenhead([parseFloat(latInput), parseFloat(lonInput)])}</Text>
                     <br />
                     <Text>Distance: {haversineDistance(myPosition, latLonMarker, 'mi').toFixed(2)} mi</Text>
                     <br />

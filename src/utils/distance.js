@@ -18,3 +18,33 @@ export const haversineDistance = (coord1, coord2, unit = 'km') => {
 
   return R * c;
 };
+
+export const maidenhead = ([lat, lon]) => {
+  const UPPER_A = 65; // ASCII 'A'
+  const LOWER_A = 97; // ASCII 'a'
+
+  const adjLat = lat + 90;
+  const adjLon = lon + 180;
+
+  // Field (first two letters)
+  const fieldLon = Math.floor(adjLon / 20);
+  const fieldLat = Math.floor(adjLat / 10);
+
+  // Square (digits)
+  const squareLon = Math.floor((adjLon % 20) / 2);
+  const squareLat = Math.floor(adjLat % 10);
+
+  // Subsquare (letters a-x)
+  const subsquareLon = Math.floor(((adjLon % 2) * 12));
+  const subsquareLat = Math.floor(((adjLat % 1) * 24));
+
+  const grid =
+    String.fromCharCode(UPPER_A + fieldLon) +
+    String.fromCharCode(UPPER_A + fieldLat) +
+    squareLon +
+    squareLat +
+    String.fromCharCode(LOWER_A + subsquareLon) +
+    String.fromCharCode(LOWER_A + subsquareLat);
+
+  return grid;
+};
