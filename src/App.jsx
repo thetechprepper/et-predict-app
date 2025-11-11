@@ -362,7 +362,7 @@ function App() {
                                 </Item>
 
                                 <Item key="later">
-                                  <Flex direction="column" gap="size-200">
+                                  <Flex direction="column" gap="size-100">
                                     {(() => {
                                       const hourGroups = {};
                                       voacapResults.future.forEach((entry) => {
@@ -390,7 +390,7 @@ function App() {
                                           <View
                                             key={hour}
                                             padding="size-200"
-                                            marginBottom="size-200"
+                                            marginBottom="size-100"
                                             borderRadius="regular"
                                             borderWidth="thin"
                                             borderColor="default"
