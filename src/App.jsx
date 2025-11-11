@@ -35,6 +35,9 @@ import MyPosition from './MyPosition.jsx';
 import './App.css';
 
 function App() {
+  const MIN_RELIABILITY = 80; // Minimum reliability threshold
+  const FUTURE_HOURS = 24;     // Number of hours for "Later"
+
   const [myPosition, setMyPosition] = useState([33.0, -112.0]);
   const [center, setCenter] = useState([33.0, -112.0]);
   const [zoom, setZoom] = useState(10);
@@ -59,11 +62,6 @@ function App() {
   const [isPredicting, setIsPredicting] = useState(false);
   const [voacapResults, setVoacapResults] = useState(null);
   const [voacapError, setVoacapError] = useState(null);
-
-  // Minimum reliability to display
-  const MIN_RELIABILITY = 80; 
-  // Number of future hours to show
-  const FUTURE_HOURS = 12;
 
   // Load default location
   useEffect(() => {
@@ -177,7 +175,22 @@ function App() {
     return null;
   };
 
-  // VOACAP prediction handler (calls the real endpoint and converts 24-hour output)
+  // Helper: map frequency (MHz) to amateur radio band
+  const freqToBand = (freq) => {
+    const f = parseFloat(freq);
+    if (f >= 3.5 && f < 4.0) return '80m';
+    if (f >= 5.3 && f < 5.5) return '60m';
+    if (f >= 7 && f < 7.3) return '40m';
+    if (f >= 10.1 && f < 10.15) return '30m';
+    if (f >= 14 && f < 14.35) return '20m';
+    if (f >= 18.068 && f < 18.168) return '17m';
+    if (f >= 21 && f < 21.45) return '15m';
+    if (f >= 24.89 && f < 24.99) return '12m';
+    if (f >= 28 && f < 29.7) return '10m';
+    return `${f} MHz`;
+  };
+
+  // VOACAP prediction handler
   const handlePredict = async () => {
     const target = getTargetCoords();
     if (!target) return;
@@ -187,47 +200,45 @@ function App() {
     setVoacapResults(null);
 
     try {
-      const response = await fetch('http://localhost:1981/api/voacap');
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const response = await fetch(`http://localhost:1981/api/voacap?lat=${target[0]}&lon=${target[1]}`);
+      if (!response.ok) throw new Error(`Prediction failed: ${response.status}`);
+      const data = await response.json(); // Expecting 24 entries in order UTC 0–23
 
-      const data = await response.json(); // 24-hour predictions (index 0 = 0000 UTC)
-      const nowUtcHour = new Date().getUTCHours();
-      const nowIndex = Math.min(Math.max(nowUtcHour, 0), 23);
-
-      // "Now" section
+      const nowIndex = new Date().getUTCHours();
       const currentHour = data[nowIndex];
+
+      // Map "Now" predictions
       const nowBands = Object.entries(currentHour.freqRel)
         .map(([freq, rel]) => ({
-          name: `${freq} MHz`,
+          freq: `${freq} MHz`,
+          band: freqToBand(freq),
           reliability: Math.round(rel * 100),
-          snr: Math.round(rel * 30), // example SNR calculation
         }))
         .filter((b) => b.reliability >= MIN_RELIABILITY)
-        .sort((a, b) => parseFloat(a.name) - parseFloat(b.name));
+        .sort((a, b) => parseFloat(a.freq) - parseFloat(b.freq));
 
-      // "Later" section: include all frequencies above threshold for FUTURE_HOURS
+      // Map "Later" predictions (all 24 hours)
       const futureBands = [];
       for (let i = 1; i <= FUTURE_HOURS; i++) {
         const hourIndex = (nowIndex + i) % 24;
         const entry = data[hourIndex];
-        const hourBands = Object.entries(entry.freqRel)
-          .map(([freq, rel]) => ({
-            time: `${String(hourIndex).padStart(2, '0')}:00 UTC`,
-            freq: `${freq} MHz`,
-            reliability: Math.round(rel * 100),
-          }))
-          .filter((b) => b.reliability >= MIN_RELIABILITY);
-
-        futureBands.push(...hourBands);
+        Object.entries(entry.freqRel).forEach(([freq, rel]) => {
+          const reliability = Math.round(rel * 100);
+          if (reliability >= MIN_RELIABILITY) {
+            futureBands.push({
+              time: `${String(hourIndex).padStart(2, '0')}:00 UTC`,
+              freq: `${freq} MHz`,
+              band: freqToBand(freq),
+              reliability,
+            });
+          }
+        });
       }
 
-      setVoacapResults({
-        now: nowBands,
-        future: futureBands,
-      });
+      setVoacapResults({ now: nowBands, future: futureBands });
     } catch (err) {
-      console.error('VOACAP request failed:', err);
-      setVoacapError('Failed to fetch VOACAP prediction.');
+      console.error(err);
+      setVoacapError('Failed to get prediction.');
     } finally {
       setIsPredicting(false);
     }
@@ -339,8 +350,7 @@ function App() {
 
                 {/* Predict Button + Modal */}
                 {(searchResult || latLonMarker) && (
-                  // Trigger prediction only when dialog opens
-                  <DialogTrigger onOpenChange={(open) => { if (open) handlePredict(); }}>
+                  <DialogTrigger onOpenChange={handlePredict}>
                     <Button variant="cta" isDisabled={isPredicting}>
                       {isPredicting ? 'Predicting...' : 'Predict'}
                     </Button>
@@ -366,40 +376,38 @@ function App() {
                                   <TableView aria-label="Now Bands" width="100%">
                                     <TableHeader>
                                       <Column>Band</Column>
+                                      <Column>Frequency</Column>
                                       <Column>Reliability</Column>
-                                      <Column>Signal</Column>
                                     </TableHeader>
-				  <TableBody>
-                                    {voacapResults.now
-                                      .filter((band) => band.reliability >= MIN_RELIABILITY)
-                                      .map((band) => (
-                                        <Row key={band.name}>
-                                          <Cell>{band.name}</Cell>
+                                    <TableBody>
+                                      {voacapResults.now.map((band) => (
+                                        <Row key={band.freq}>
+                                          <Cell>{band.band}</Cell>
+                                          <Cell>{band.freq}</Cell>
                                           <Cell>{band.reliability}%</Cell>
-                                          <Cell>{band.snr} dB</Cell>
-                                       </Row>
-                                     ))}
-                                   </TableBody>
+                                        </Row>
+                                      ))}
+                                    </TableBody>
                                   </TableView>
                                 </Item>
                                 <Item key="later">
                                   <TableView aria-label="Later Bands" width="100%">
-                                  <TableHeader>
-                                    <Column>Time (UTC)</Column>
-                                    <Column>Band</Column>
-                                    <Column>Reliability</Column>
-                                  </TableHeader>
-                                  <TableBody>
-                                    {voacapResults.future.map((entry, i) => (
-                                      <Row key={`${entry.time}-${entry.freq}-${i}`}>
-                                        <Cell>{entry.time}</Cell>
-                                        <Cell>{entry.freq}</Cell>
-                                        <Cell>{entry.reliability}%</Cell>
-                                      </Row>
-                                    ))}
-                                  </TableBody>
-
-
+                                    <TableHeader>
+                                      <Column>Time (UTC)</Column>
+                                      <Column>Band</Column>
+                                      <Column>Frequency</Column>
+                                      <Column>Reliability</Column>
+                                    </TableHeader>
+                                    <TableBody>
+                                      {voacapResults.future.map((entry, i) => (
+                                        <Row key={`${entry.time}-${entry.freq}-${i}`}>
+                                          <Cell>{entry.time}</Cell>
+                                          <Cell>{entry.band}</Cell>
+                                          <Cell>{entry.freq}</Cell>
+                                          <Cell>{entry.reliability}%</Cell>
+                                        </Row>
+                                      ))}
+                                    </TableBody>
                                   </TableView>
                                 </Item>
                               </TabPanels>
