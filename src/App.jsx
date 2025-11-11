@@ -30,7 +30,7 @@ import Minimize from '@spectrum-icons/workflow/Minimize';
 import ShowMenu from '@spectrum-icons/workflow/ShowMenu';
 import { Map, Marker, ZoomControl } from 'pigeon-maps';
 import { isValidLatLon } from './utils';
-import { ADSB_SERVICE, AIRCRAFT_SERVICE, CALLSIGN_SERVICE, GEO_SERVICE, MAP_SERVICE } from './config';
+import { ADSB_SERVICE, AIRCRAFT_SERVICE, CALLSIGN_SERVICE, GEO_SERVICE, MAP_SERVICE, VOACAP_SERVICE } from './config';
 import MyPosition from './MyPosition.jsx';
 import './App.css';
 
@@ -200,14 +200,19 @@ function App() {
     setVoacapResults(null);
 
     try {
-      const response = await fetch(`http://localhost:1981/api/voacap?lat=${target[0]}&lon=${target[1]}`);
+      const response = await fetch(
+        `${VOACAP_SERVICE}`
+      );
       if (!response.ok) throw new Error(`Prediction failed: ${response.status}`);
       const data = await response.json(); // Expecting 24 entries in order UTC 0–23
 
-      const nowIndex = new Date().getUTCHours();
-      const currentHour = data[nowIndex];
+      const now = new Date();
+      const nowUTCMinutes = now.getUTCMinutes();
+      const nowIndex = now.getUTCHours();
+      const startHour = nowUTCMinutes > 0 ? (nowIndex + 1) % 24 : nowIndex;
 
-      // Map "Now" predictions
+      // Map "Now" predictions (current hour)
+      const currentHour = data[nowIndex];
       const nowBands = Object.entries(currentHour.freqRel)
         .map(([freq, rel]) => ({
           freq: `${freq} MHz`,
@@ -217,10 +222,10 @@ function App() {
         .filter((b) => b.reliability >= MIN_RELIABILITY)
         .sort((a, b) => parseFloat(a.freq) - parseFloat(b.freq));
 
-      // Map "Later" predictions (all 24 hours)
+      // Map "Later" predictions starting from next UTC hour
       const futureBands = [];
-      for (let i = 1; i <= FUTURE_HOURS; i++) {
-        const hourIndex = (nowIndex + i) % 24;
+      for (let i = 0; i < FUTURE_HOURS; i++) {
+        const hourIndex = (startHour + i) % 24;
         const entry = data[hourIndex];
         Object.entries(entry.freqRel).forEach(([freq, rel]) => {
           const reliability = Math.round(rel * 100);
@@ -243,6 +248,7 @@ function App() {
       setIsPredicting(false);
     }
   };
+
 
   return (
     <Provider theme={defaultTheme}>
