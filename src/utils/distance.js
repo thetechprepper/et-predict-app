@@ -19,6 +19,27 @@ export const haversineDistance = (coord1, coord2, unit = 'km') => {
   return R * c;
 };
 
+export const bearing = (from, to) => {
+    const toRadians = (deg) => deg * (Math.PI / 180);
+    const toDegrees = (rad) => rad * (180 / Math.PI);
+
+    const lat1 = parseFloat(from[0]);
+    const lon1 = parseFloat(from[1]);
+    const lat2 = parseFloat(to[0]);
+    const lon2 = parseFloat(to[1]);
+
+    const lat1Rad = toRadians(lat1);
+    const lat2Rad = toRadians(lat2);
+    const deltaLonRad = toRadians(lon2 - lon1);
+
+    const y = Math.sin(deltaLonRad) * Math.cos(lat2Rad);
+    const x = Math.cos(lat1Rad) * Math.sin(lat2Rad) - Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(deltaLonRad);
+
+    let theta = Math.atan2(y, x);
+    theta = toDegrees(theta);
+    return (theta + 360) % 360; // normalize to 0–360 degrees
+};
+
 export const maidenhead = ([lat, lon]) => {
   const UPPER_A = 65; // ASCII 'A'
   const LOWER_A = 97; // ASCII 'a'

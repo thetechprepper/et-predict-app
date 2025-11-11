@@ -34,7 +34,7 @@ import { Map, Marker, ZoomControl } from 'pigeon-maps';
 import { isValidLatLon } from './utils';
 import { ADSB_SERVICE, AIRCRAFT_SERVICE, CALLSIGN_SERVICE, GEO_SERVICE, MAP_SERVICE, VOACAP_SERVICE } from './config';
 import MyPosition from './MyPosition.jsx';
-import { haversineDistance, maidenhead } from './utils/distance';
+import { bearing, haversineDistance, maidenhead } from './utils/distance';
 import './App.css';
 
 function App() {
@@ -338,8 +338,6 @@ function App() {
                     <br />
                     <Text>Lat/Lon: {searchResult.lat.toFixed(4)}, {searchResult.lon.toFixed(4)}</Text>
                     <br />
-                    <Text>Alt: {searchResult.alt} m</Text>
-                    <br />
                     <Text>Distance: {searchResult.distance.toFixed(2)} mi</Text>
                     <br />
                     <Text>Bearing: {searchResult.bearing}°</Text>
@@ -357,7 +355,7 @@ function App() {
                     <br />
                     <Text>Distance: {haversineDistance(myPosition, latLonMarker, 'mi').toFixed(2)} mi</Text>
                     <br />
-                    <Text>Bearing: TODO</Text>
+                    <Text>Bearing: {bearing(myPosition, [parseFloat(latInput), parseFloat(lonInput)]).toFixed(1)}°</Text>
                   </View>
                 )}
 
