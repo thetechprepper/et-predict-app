@@ -172,7 +172,7 @@ function App() {
     return null;
   };
 
-  // Mock VOACAP prediction handler
+  // VOACAP prediction handler (calls the real endpoint and converts 24-hour output)
   const handlePredict = async () => {
     const target = getTargetCoords();
     if (!target) return;
@@ -182,27 +182,62 @@ function App() {
     setVoacapResults(null);
 
     try {
-      // Simulate delay
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      const response = await fetch('http://localhost:1981/api/voacap');
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-      // Mock VOACAP-like data
-      const mockData = {
-        now: [
-          { name: '40m', reliability: 92, snr: 28 },
-          { name: '30m', reliability: 85, snr: 24 },
-          { name: '20m', reliability: 78, snr: 20 },
-        ],
-        future: [
-          { time: '2025-11-02T08:00Z', bestBand: '20m', reliability: 80 },
-          { time: '2025-11-02T12:00Z', bestBand: '17m', reliability: 75 },
-          { time: '2025-11-02T18:00Z', bestBand: '15m', reliability: 82 },
-        ],
-      };
+      const data = await response.json(); // expected 24 elements; index 0 == 00:00 UTC
+      if (!Array.isArray(data) || data.length < 24) {
+        throw new Error('VOACAP response does not contain 24 hourly entries');
+      }
 
-      setVoacapResults(mockData);
+      // Current UTC hour index
+      const nowUtcHour = new Date().getUTCHours();
+      const nowIndex = Math.min(Math.max(nowUtcHour, 0), 23);
+
+      // Build "now" table from current UTC hour
+      const currentHour = data[nowIndex];
+      const nowResults = Object.entries(currentHour.freqRel || {})
+        .sort(([fa], [fb]) => parseFloat(fa) - parseFloat(fb))
+        .map(([freq, rel]) => ({
+          name: `${freq} MHz`,
+          reliability: Math.round(rel * 100),
+          snr: Math.round(rel * 30), // placeholder conversion to SNR (if you have real SNR use that)
+        }));
+
+      // Build "future" — next 6 hours (wrap around using modulo)
+      const futureResults = [];
+      for (let i = 1; i <= 6; i++) {
+        const hourIndex = (nowIndex + i) % 24;
+        const entry = data[hourIndex];
+        const bands = Object.entries(entry.freqRel || []);
+        if (bands.length === 0) {
+          futureResults.push({
+            time: `${String(hourIndex).padStart(2, '0')}:00 UTC`,
+            bestBand: 'N/A',
+            reliability: 0,
+          });
+          continue;
+        }
+        // choose band with highest reliability
+        const [bestFreq, bestRel] = bands.reduce(
+          (max, curr) => (curr[1] > max[1] ? curr : max),
+          ['', -Infinity]
+        );
+        futureResults.push({
+          time: `${String(hourIndex).padStart(2, '0')}:00 UTC`,
+          bestBand: `${bestFreq} MHz`,
+          reliability: Math.round(bestRel * 100),
+        });
+      }
+
+      setVoacapResults({
+        nowUtcHour,
+        now: nowResults,
+        future: futureResults,
+      });
     } catch (err) {
-      console.error(err);
-      setVoacapError('Failed to get prediction.');
+      console.error('VOACAP request failed:', err);
+      setVoacapError('Failed to fetch VOACAP prediction.');
     } finally {
       setIsPredicting(false);
     }
@@ -314,7 +349,8 @@ function App() {
 
                 {/* Predict Button + Modal */}
                 {(searchResult || latLonMarker) && (
-                  <DialogTrigger onOpenChange={handlePredict}>
+                  // Trigger prediction only when dialog opens
+                  <DialogTrigger onOpenChange={(open) => { if (open) handlePredict(); }}>
                     <Button variant="cta" isDisabled={isPredicting}>
                       {isPredicting ? 'Predicting...' : 'Predict'}
                     </Button>
@@ -376,9 +412,9 @@ function App() {
                             </Tabs>
                           )}
                         </Content>
-			<ButtonGroup>
+                        <ButtonGroup>
                           <Button variant="secondary" onPress={close}>Close</Button>
-			</ButtonGroup>
+                        </ButtonGroup>
                       </Dialog>
                     )}
                   </DialogTrigger>
