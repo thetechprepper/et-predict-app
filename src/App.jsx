@@ -28,6 +28,7 @@ import {
   defaultTheme,
 } from '@adobe/react-spectrum';
 import Minimize from '@spectrum-icons/workflow/Minimize';
+import Refresh from '@spectrum-icons/workflow/Refresh';
 import ShowMenu from '@spectrum-icons/workflow/ShowMenu';
 import { Map, Marker, ZoomControl } from 'pigeon-maps';
 import { isValidLatLon } from './utils';
@@ -67,6 +68,19 @@ function App() {
   // VOACAP input
   const [power, setPower] = useState("5"); // in watts
   const [mode, setMode] = useState("js8"); // radio mode
+
+  const handleReset = () => {
+    setSearchCallsign('');
+    setSearchResult(null);
+    setSearchError(null);
+    setLatInput('');
+    setLonInput('');
+    setLatLonMarker(null);
+    setLatLonError(null);
+    setVoacapResults(null);
+    setVoacapError(null);
+    setCenter([myPosition[0], myPosition[1]]);
+  };
 
   // Load default location
   useEffect(() => {
@@ -281,6 +295,10 @@ function App() {
                     <Text>Hide</Text>
                   </ActionButton>
                   <MyPosition setMyPosition={setMyPosition} setCenter={setCenter} showText={true} />
+	          <ActionButton onPress={handleReset}>
+		    <Refresh />
+		    <Text>Reset</Text>
+		  </ActionButton>
                 </Flex>
 
                 {/* Callsign Search */}
