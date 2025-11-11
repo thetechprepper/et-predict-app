@@ -60,8 +60,10 @@ function App() {
   const [voacapResults, setVoacapResults] = useState(null);
   const [voacapError, setVoacapError] = useState(null);
 
-  // Minimum reliability threshold for displaying predictions
-  const MIN_RELIABILITY = 80;
+  // Minimum reliability to display
+  const MIN_RELIABILITY = 80; 
+  // Number of future hours to show
+  const FUTURE_HOURS = 12;
 
   // Load default location
   useEffect(() => {
@@ -188,55 +190,40 @@ function App() {
       const response = await fetch('http://localhost:1981/api/voacap');
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-      const data = await response.json(); // expected 24 elements; index 0 == 00:00 UTC
-      if (!Array.isArray(data) || data.length < 24) {
-        throw new Error('VOACAP response does not contain 24 hourly entries');
-      }
-
-      // Current UTC hour index
+      const data = await response.json(); // 24-hour predictions (index 0 = 0000 UTC)
       const nowUtcHour = new Date().getUTCHours();
       const nowIndex = Math.min(Math.max(nowUtcHour, 0), 23);
 
-      // Build "now" table from current UTC hour
+      // "Now" section
       const currentHour = data[nowIndex];
-      const nowResults = Object.entries(currentHour.freqRel || {})
-        .sort(([fa], [fb]) => parseFloat(fa) - parseFloat(fb))
+      const nowBands = Object.entries(currentHour.freqRel)
         .map(([freq, rel]) => ({
           name: `${freq} MHz`,
           reliability: Math.round(rel * 100),
-          snr: Math.round(rel * 30), // placeholder conversion to SNR (if you have real SNR use that)
-        }));
+          snr: Math.round(rel * 30), // example SNR calculation
+        }))
+        .filter((b) => b.reliability >= MIN_RELIABILITY)
+        .sort((a, b) => parseFloat(a.name) - parseFloat(b.name));
 
-      // Build "future" — next 6 hours (wrap around using modulo)
-      const futureResults = [];
-      for (let i = 1; i <= 6; i++) {
+      // "Later" section: include all frequencies above threshold for FUTURE_HOURS
+      const futureBands = [];
+      for (let i = 1; i <= FUTURE_HOURS; i++) {
         const hourIndex = (nowIndex + i) % 24;
         const entry = data[hourIndex];
-        const bands = Object.entries(entry.freqRel || []);
-        if (bands.length === 0) {
-          futureResults.push({
+        const hourBands = Object.entries(entry.freqRel)
+          .map(([freq, rel]) => ({
             time: `${String(hourIndex).padStart(2, '0')}:00 UTC`,
-            bestBand: 'N/A',
-            reliability: 0,
-          });
-          continue;
-        }
-        // choose band with highest reliability
-        const [bestFreq, bestRel] = bands.reduce(
-          (max, curr) => (curr[1] > max[1] ? curr : max),
-          ['', -Infinity]
-        );
-        futureResults.push({
-          time: `${String(hourIndex).padStart(2, '0')}:00 UTC`,
-          bestBand: `${bestFreq} MHz`,
-          reliability: Math.round(bestRel * 100),
-        });
+            freq: `${freq} MHz`,
+            reliability: Math.round(rel * 100),
+          }))
+          .filter((b) => b.reliability >= MIN_RELIABILITY);
+
+        futureBands.push(...hourBands);
       }
 
       setVoacapResults({
-        nowUtcHour,
-        now: nowResults,
-        future: futureResults,
+        now: nowBands,
+        future: futureBands,
       });
     } catch (err) {
       console.error('VOACAP request failed:', err);
@@ -397,22 +384,22 @@ function App() {
                                 </Item>
                                 <Item key="later">
                                   <TableView aria-label="Later Bands" width="100%">
-                                    <TableHeader>
-                                      <Column>Time (UTC)</Column>
-                                      <Column>Best Band</Column>
-                                      <Column>Reliability</Column>
-                                    </TableHeader>
-                                    <TableBody>
-                                      {voacapResults.future
-                                        .filter((entry) => entry.reliability >= MIN_RELIABILITY)
-                                        .map((entry) => (
-                                        <Row key={entry.time}>
-                                          <Cell>{entry.time}</Cell>
-                                          <Cell>{entry.bestBand}</Cell>
-                                          <Cell>{entry.reliability}%</Cell>
-                                        </Row>
-                                      ))}
-                                    </TableBody>
+                                  <TableHeader>
+                                    <Column>Time (UTC)</Column>
+                                    <Column>Band</Column>
+                                    <Column>Reliability</Column>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {voacapResults.future.map((entry, i) => (
+                                      <Row key={`${entry.time}-${entry.freq}-${i}`}>
+                                        <Cell>{entry.time}</Cell>
+                                        <Cell>{entry.freq}</Cell>
+                                        <Cell>{entry.reliability}%</Cell>
+                                      </Row>
+                                    ))}
+                                  </TableBody>
+
+
                                   </TableView>
                                 </Item>
                               </TabPanels>
