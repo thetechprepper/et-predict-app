@@ -10,6 +10,7 @@ import {
   Flex,
   Heading,
   Item,
+  Picker,
   Provider,
   Tabs,
   TabList,
@@ -62,6 +63,10 @@ function App() {
   const [isPredicting, setIsPredicting] = useState(false);
   const [voacapResults, setVoacapResults] = useState(null);
   const [voacapError, setVoacapError] = useState(null);
+
+  // VOACAP input
+  const [power, setPower] = useState("5"); // in watts
+  const [mode, setMode] = useState("js8"); // radio mode
 
   // Load default location
   useEffect(() => {
@@ -199,9 +204,24 @@ function App() {
     setVoacapResults(null);
 
     try {
-      const response = await fetch(VOACAP_SERVICE);
+
+      const payload = {
+        txLatLon: `${myPosition[0]},${myPosition[1]}`,
+        rxLatLon: `${target[0]},${target[1]}`,
+        power: parseInt(power),
+        mode: mode,
+      };
+
+      const response = await fetch(VOACAP_SERVICE, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
       if (!response.ok) throw new Error(`Prediction failed: ${response.status}`);
-      const data = await response.json(); // Expecting 24 entries for UTC hours 0–23
+      const data = await response.json(); // Expecting 24 entries
 
       const now = new Date();
       const nowHour = now.getUTCHours();
@@ -322,8 +342,36 @@ function App() {
                   </View>
                 )}
 
+                {/* Prediction parameters: power and mode */}
+                {(searchResult || latLonMarker) && (
+                  <Flex direction="row" gap="size-200" alignItems="end">
+                    <Picker
+                      label="Power (Watts)"
+                      selectedKey={power}
+                      onSelectionChange={setPower}
+                      width="50%"
+                    >
+                      {["5","20","100","500","1500"].map((p) => (
+                        <Item key={p}>{p}</Item>
+                      ))}
+                    </Picker>
+
+                    <Picker
+                      label="Mode"
+                      selectedKey={mode}
+                      onSelectionChange={setMode}
+                      width="50%"
+                    >
+                      {["am", "cw","js8","ssb"].map((m) => (
+                        <Item key={m}>{m.toUpperCase()}</Item>
+                      ))}
+                    </Picker>
+                  </Flex>
+		)}
+
                 {/* Predict Button + Modal */}
                 {(searchResult || latLonMarker) && (
+	
                   <DialogTrigger onOpenChange={handlePredict}>
                     <Button variant="cta" isDisabled={isPredicting}>
                       {isPredicting ? 'Predicting...' : 'Predict'}
