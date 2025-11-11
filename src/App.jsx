@@ -35,8 +35,8 @@ import MyPosition from './MyPosition.jsx';
 import './App.css';
 
 function App() {
-  const MIN_RELIABILITY = 80; // Minimum reliability threshold
-  const FUTURE_HOURS = 24;     // Number of hours for "Later"
+  const MIN_RELIABILITY = 90; // Minimum reliability threshold
+  const FUTURE_HOURS = 24;    // Number of hours for "Later"
 
   const [myPosition, setMyPosition] = useState([33.0, -112.0]);
   const [center, setCenter] = useState([33.0, -112.0]);
@@ -118,7 +118,6 @@ function App() {
     setSearchError(null);
     setIsSearching(true);
     setSearchResult(null);
-
     setLatLonError(null);
     setLatLonMarker(null);
 
@@ -200,19 +199,16 @@ function App() {
     setVoacapResults(null);
 
     try {
-      const response = await fetch(
-        `${VOACAP_SERVICE}`
-      );
+      const response = await fetch(VOACAP_SERVICE);
       if (!response.ok) throw new Error(`Prediction failed: ${response.status}`);
-      const data = await response.json(); // Expecting 24 entries in order UTC 0–23
+      const data = await response.json(); // Expecting 24 entries for UTC hours 0–23
 
       const now = new Date();
-      const nowUTCMinutes = now.getUTCMinutes();
-      const nowIndex = now.getUTCHours();
-      const startHour = nowUTCMinutes > 0 ? (nowIndex + 1) % 24 : nowIndex;
+      const nowHour = now.getUTCHours();
+      const nowMinutes = now.getUTCMinutes();
 
-      // Map "Now" predictions (current hour)
-      const currentHour = data[nowIndex];
+      // "Now" predictions (current hour)
+      const currentHour = data[nowHour];
       const nowBands = Object.entries(currentHour.freqRel)
         .map(([freq, rel]) => ({
           freq: `${freq} MHz`,
@@ -222,8 +218,10 @@ function App() {
         .filter((b) => b.reliability >= MIN_RELIABILITY)
         .sort((a, b) => parseFloat(a.freq) - parseFloat(b.freq));
 
-      // Map "Later" predictions starting from next UTC hour
+      // "Later" predictions: next UTC hour onward
       const futureBands = [];
+      const startHour = (nowMinutes === 0) ? (nowHour + 1) % 24 : (nowHour + 1) % 24;
+
       for (let i = 0; i < FUTURE_HOURS; i++) {
         const hourIndex = (startHour + i) % 24;
         const entry = data[hourIndex];
@@ -249,7 +247,6 @@ function App() {
     }
   };
 
-
   return (
     <Provider theme={defaultTheme}>
       <Flex direction="column" height="100vh">
@@ -258,17 +255,12 @@ function App() {
           {sidebarOpen && (
             <View backgroundColor="gray-100" padding="size-200" width="size-4600">
               <Flex direction="column" gap="size-200">
-                {/* Top row: Hide + MyPosition */}
                 <Flex direction="row" gap="size-200" alignItems="center">
                   <ActionButton onPress={() => setSidebarOpen(false)} aria-label="Hide Panel">
                     <Minimize />
                     <Text>Hide</Text>
                   </ActionButton>
-                  <MyPosition
-                    setMyPosition={setMyPosition}
-                    setCenter={setCenter}
-                    showText={true}
-                  />
+                  <MyPosition setMyPosition={setMyPosition} setCenter={setCenter} showText={true} />
                 </Flex>
 
                 {/* Callsign Search */}
@@ -288,23 +280,9 @@ function App() {
 
                 {/* Lat/Lon Search */}
                 <Flex direction="row" gap="size-200" alignItems="end">
-                  <TextField
-                    label="Latitude"
-                    placeholder="e.g., 33.45"
-                    value={latInput}
-                    onChange={setLatInput}
-                    width="50%"
-                  />
-                  <TextField
-                    label="Longitude"
-                    placeholder="e.g., -111.93"
-                    value={lonInput}
-                    onChange={setLonInput}
-                    width="50%"
-                  />
-                  <Button variant="cta" onPress={handleLatLonSearch}>
-                    Go
-                  </Button>
+                  <TextField label="Latitude" placeholder="e.g., 33.45" value={latInput} onChange={setLatInput} width="50%" />
+                  <TextField label="Longitude" placeholder="e.g., -111.93" value={lonInput} onChange={setLonInput} width="50%" />
+                  <Button variant="cta" onPress={handleLatLonSearch}>Go</Button>
                 </Flex>
 
                 {latLonError && <Text UNSAFE_style={{ color: 'red' }}>{latLonError}</Text>}
@@ -313,19 +291,13 @@ function App() {
                 {/* Callsign Result */}
                 {searchResult && (
                   <View backgroundColor="gray-200" padding="size-100" borderRadius="regular" marginTop="size-200">
-                    <Text>
-                      <b>{searchResult.firstName}</b> {searchResult.callsign}
-                    </Text>
+                    <Text><b>{searchResult.firstName}</b> {searchResult.callsign}</Text>
                     <br />
-                    <Text>
-                      {searchResult.city}, {searchResult.state} {searchResult.zip}
-                    </Text>
+                    <Text>{searchResult.city}, {searchResult.state} {searchResult.zip}</Text>
                     <br />
                     <Text>Grid: {searchResult.grid}</Text>
                     <br />
-                    <Text>
-                      Lat/Lon: {searchResult.lat.toFixed(4)}, {searchResult.lon.toFixed(4)}
-                    </Text>
+                    <Text>Lat/Lon: {searchResult.lat.toFixed(4)}, {searchResult.lon.toFixed(4)}</Text>
                     <br />
                     <Text>Alt: {searchResult.alt} m</Text>
                     <br />
@@ -335,16 +307,12 @@ function App() {
                   </View>
                 )}
 
-                {/* Lat/lon result info */}
+                {/* Lat/Lon marker info */}
                 {latLonMarker && (
                   <View backgroundColor="gray-200" padding="size-100" borderRadius="regular" marginTop="size-200">
-                    <Text>
-                      <b>Coordinates</b>
-                    </Text>
+                    <Text><b>Coordinates</b></Text>
                     <br />
-                    <Text>
-                      Lat/Lon: {latInput}, {lonInput}
-                    </Text>
+                    <Text>Lat/Lon: {latInput}, {lonInput}</Text>
                     <br />
                     <Text>Grid: TODO</Text>
                     <br />
@@ -366,11 +334,7 @@ function App() {
                         <Divider />
                         <Content>
                           {voacapError && <Text color="negative">{voacapError}</Text>}
-
-                          {!voacapResults && !voacapError && (
-                            <Text>Running prediction...</Text>
-                          )}
-
+                          {!voacapResults && !voacapError && <Text>Running prediction...</Text>}
                           {voacapResults && (
                             <Tabs aria-label="VOACAP Results" defaultSelectedKey="now">
                               <TabList>
@@ -402,48 +366,64 @@ function App() {
                                     {(() => {
                                       const hourGroups = {};
                                       voacapResults.future.forEach((entry) => {
-                                        const hour = entry.time.split(':')[0];
+                                        const hour = parseInt(entry.time.split(':')[0], 10);
                                         if (!hourGroups[hour]) hourGroups[hour] = [];
                                         hourGroups[hour].push(entry);
                                       });
 
-                                      return Object.entries(hourGroups).map(([hour, entries], idx) => (
-                                        <View
-                                          key={hour}
-                                          padding="size-200"
-                                          marginBottom="size-200"
-                                          borderRadius="regular"
-                                          borderWidth="thin"
-                                          borderColor="default"
-                                          shadow="regular"
-                                          UNSAFE_style={{
-                                            background: idx % 2 === 0
-                                              ? 'linear-gradient(145deg, #fafafa, #e5e5e5)' // subtle light gray
-                                              : 'linear-gradient(145deg, #ebf5ff, #d0e5ff)', // subtle light blue
-                                          }}
-                                        >
-                                          <Text><b>{hour}:00 UTC</b></Text>
+                                      // Determine the starting hour (next UTC hour)
+                                      const nowUTC = new Date();
+                                      const nextHour = (nowUTC.getUTCHours() + 1) % 24;
 
-                                          <Flex direction="column" gap="size-100" marginTop="size-100">
-                                            {entries.map((e, i) => (
-                                              <Flex
-                                                key={i}
-                                                direction="row"
-                                                justifyContent="space-between"
-                                                paddingY="size-50"
-                                                paddingX="size-100"
-                                                backgroundColor="#ffffff"
-                                                borderRadius="regular"
-                                                shadow="small"
-                                              >
-                                                <Text>{e.band}</Text>
-                                                <Text>{e.freq}</Text>
-                                                <Text>{e.reliability}%</Text>
-                                              </Flex>
-                                            ))}
-                                          </Flex>
-                                        </View>
-                                      ));
+                                      // Rotate hours starting from nextHour
+                                      const sortedHours = [];
+                                      for (let i = 0; i < 24; i++) {
+                                        const hour = (nextHour + i) % 24;
+                                        if (hourGroups[hour]) {
+                                          sortedHours.push(hour);
+                                        }
+                                      }
+
+                                      return sortedHours.map((hour, idx) => {
+                                        const entries = hourGroups[hour];
+                                        return (
+                                          <View
+                                            key={hour}
+                                            padding="size-200"
+                                            marginBottom="size-200"
+                                            borderRadius="regular"
+                                            borderWidth="thin"
+                                            borderColor="default"
+                                            shadow="regular"
+                                            UNSAFE_style={{
+                                              background: idx % 2 === 0
+                                                ? 'linear-gradient(145deg, #fafafa, #e5e5e5)'
+                                                : 'linear-gradient(145deg, #ebf5ff, #d0e5ff)',
+                                            }}
+                                          >
+                                            <Text><b>{String(hour).padStart(2, '0')}:00 UTC</b></Text>
+
+                                            <Flex direction="column" gap="size-100" marginTop="size-100">
+                                              {entries.map((e, i) => (
+                                                <Flex
+                                                  key={i}
+                                                  direction="row"
+                                                  justifyContent="space-between"
+                                                  paddingY="size-50"
+                                                  paddingX="size-100"
+                                                  backgroundColor="#ffffff"
+                                                  borderRadius="regular"
+                                                  shadow="small"
+                                                >
+                                                  <Text>{e.band}</Text>
+                                                  <Text>{e.freq}</Text>
+                                                  <Text>{e.reliability}%</Text>
+                                                </Flex>
+                                              ))}
+                                            </Flex>
+                                          </View>
+                                        );
+                                      });
                                     })()}
                                   </Flex>
                                 </Item>
