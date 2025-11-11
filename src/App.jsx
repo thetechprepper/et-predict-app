@@ -412,11 +412,12 @@ function App() {
                                           shadow="regular"
                                           UNSAFE_style={{
                                             background: idx % 2 === 0
-                                              ? 'linear-gradient(135deg, #f5f5f5, #e0e0e0)'  // light gray gradient
-                                              : 'linear-gradient(135deg, #e6f0ff, #cce0ff)', // light blue gradient
+                                              ? 'linear-gradient(145deg, #fafafa, #e5e5e5)' // subtle light gray
+                                              : 'linear-gradient(145deg, #ebf5ff, #d0e5ff)', // subtle light blue
                                           }}
                                         >
                                           <Text><b>{hour}:00 UTC</b></Text>
+
                                           <Flex direction="column" gap="size-100" marginTop="size-100">
                                             {entries.map((e, i) => (
                                               <Flex
@@ -425,8 +426,9 @@ function App() {
                                                 justifyContent="space-between"
                                                 paddingY="size-50"
                                                 paddingX="size-100"
-                                                backgroundColor="white"
+                                                backgroundColor="#ffffff"
                                                 borderRadius="regular"
+                                                shadow="small"
                                               >
                                                 <Text>{e.band}</Text>
                                                 <Text>{e.freq}</Text>
@@ -439,7 +441,6 @@ function App() {
                                     })()}
                                   </Flex>
                                 </Item>
-
 
                               </TabPanels>
                             </Tabs>
