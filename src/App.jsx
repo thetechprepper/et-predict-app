@@ -390,26 +390,57 @@ function App() {
                                     </TableBody>
                                   </TableView>
                                 </Item>
+
                                 <Item key="later">
-                                  <TableView aria-label="Later Bands" width="100%">
-                                    <TableHeader>
-                                      <Column>Time (UTC)</Column>
-                                      <Column>Band</Column>
-                                      <Column>Frequency</Column>
-                                      <Column>Reliability</Column>
-                                    </TableHeader>
-                                    <TableBody>
-                                      {voacapResults.future.map((entry, i) => (
-                                        <Row key={`${entry.time}-${entry.freq}-${i}`}>
-                                          <Cell>{entry.time}</Cell>
-                                          <Cell>{entry.band}</Cell>
-                                          <Cell>{entry.freq}</Cell>
-                                          <Cell>{entry.reliability}%</Cell>
-                                        </Row>
-                                      ))}
-                                    </TableBody>
-                                  </TableView>
+                                  <Flex direction="column" gap="size-200">
+                                    {(() => {
+                                      const hourGroups = {};
+                                      voacapResults.future.forEach((entry) => {
+                                        const hour = entry.time.split(':')[0];
+                                        if (!hourGroups[hour]) hourGroups[hour] = [];
+                                        hourGroups[hour].push(entry);
+                                      });
+
+                                      return Object.entries(hourGroups).map(([hour, entries], idx) => (
+                                        <View
+                                          key={hour}
+                                          padding="size-200"
+                                          marginBottom="size-200"
+                                          borderRadius="regular"
+                                          borderWidth="thin"
+                                          borderColor="default"
+                                          shadow="regular"
+                                          UNSAFE_style={{
+                                            background: idx % 2 === 0
+                                              ? 'linear-gradient(135deg, #f5f5f5, #e0e0e0)'  // light gray gradient
+                                              : 'linear-gradient(135deg, #e6f0ff, #cce0ff)', // light blue gradient
+                                          }}
+                                        >
+                                          <Text><b>{hour}:00 UTC</b></Text>
+                                          <Flex direction="column" gap="size-100" marginTop="size-100">
+                                            {entries.map((e, i) => (
+                                              <Flex
+                                                key={i}
+                                                direction="row"
+                                                justifyContent="space-between"
+                                                paddingY="size-50"
+                                                paddingX="size-100"
+                                                backgroundColor="white"
+                                                borderRadius="regular"
+                                              >
+                                                <Text>{e.band}</Text>
+                                                <Text>{e.freq}</Text>
+                                                <Text>{e.reliability}%</Text>
+                                              </Flex>
+                                            ))}
+                                          </Flex>
+                                        </View>
+                                      ));
+                                    })()}
+                                  </Flex>
                                 </Item>
+
+
                               </TabPanels>
                             </Tabs>
                           )}
