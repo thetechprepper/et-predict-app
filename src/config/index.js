@@ -6,5 +6,7 @@ export const MAP_HOST  = import.meta.env.VITE_MAP_HOST  || 'http://localhost:198
 // Endpoints
 export const ADSB_SERVICE = `${DATA_HOST}/data.json`;
 export const AIRCRAFT_SERVICE = `${API_HOST}/api/aircraft`;
+export const CALLSIGN_SERVICE = `${API_HOST}/api/license`;
 export const GEO_SERVICE = `${API_HOST}/api/geo/position`;
+export const VOACAP_SERVICE = `${API_HOST}/api/voacap`;
 export const MAP_SERVICE = `${MAP_HOST}/services`;
