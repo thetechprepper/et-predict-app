@@ -81,6 +81,7 @@ function App() {
     setVoacapResults(null);
     setVoacapError(null);
     setCenter([myPosition[0], myPosition[1]]);
+    setZoom(10);
   };
 
   // Load default location
