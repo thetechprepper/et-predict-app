@@ -380,7 +380,7 @@ function App() {
                       onSelectionChange={setMode}
                       width="50%"
                     >
-                      {["am","ardop","cw","js8","ssb"].map((m) => (
+                      {["am","ardop","cw","js8","ssb", "vara-500", "vara-2300", "vara-2750"].map((m) => (
                         <Item key={m}>{m.toUpperCase()}</Item>
                       ))}
                     </Picker>
