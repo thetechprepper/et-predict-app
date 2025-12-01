@@ -41,9 +41,12 @@ function App() {
   const MIN_RELIABILITY = 90; // Minimum reliability threshold
   const FUTURE_HOURS = 24;    // Number of hours for "Later"
 
+  const DEFAULT_ZOOM_REGION = 10; // Default zoom level for country-specific maps (i.e. US and CA).
+  const DEFAULT_ZOOM_WORLD = 6;   // Default zoom level for world map.
+
   const [myPosition, setMyPosition] = useState([33.0, -112.0]);
   const [center, setCenter] = useState([33.0, -112.0]);
-  const [zoom, setZoom] = useState(10);
+  const [zoom, setZoom] = useState(DEFAULT_ZOOM_WORLD);
 
   const [useFallback, setUseFallback] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -70,6 +73,10 @@ function App() {
   const [power, setPower] = useState("5"); // in watts
   const [mode, setMode] = useState("js8"); // radio mode
 
+  // Handle zoom level based on availability of offline regional vs world map
+  const getDefaultZoom = () => 
+    (tileBaseUrl?.includes('osm-world')) ? DEFAULT_ZOOM_WORLD : DEFAULT_ZOOM_REGION;
+
   const handleReset = () => {
     setSearchCallsign('');
     setSearchResult(null);
@@ -81,7 +88,7 @@ function App() {
     setVoacapResults(null);
     setVoacapError(null);
     setCenter([myPosition[0], myPosition[1]]);
-    setZoom(10);
+    setZoom(getDefaultZoom());
   };
 
   // Load default location
@@ -110,9 +117,15 @@ function App() {
         const response = await fetch(MAP_SERVICE);
         const services = await response.json();
         if (services.length > 0) {
-          setTileBaseUrl(services[0].url);
+          const url = services[0].url;
+          setTileBaseUrl(url);
+          setZoom(
+            url?.includes('osm-world') ? DEFAULT_ZOOM_WORLD : DEFAULT_ZOOM_REGION
+          );
+
         } else {
           setUseFallback(true);
+          setZoom(DEFAULT_ZOOM_REGION);
         }
       } catch (err) {
         console.error('Failed to fetch map services:', err);
@@ -152,7 +165,7 @@ function App() {
       if (data.lat && data.lon) {
         setSearchResult(data);
         setCenter([data.lat, data.lon]);
-        setZoom(10);
+        setZoom(getDefaultZoom());
       } else {
         setSearchError('Callsign not found.');
       }
@@ -185,7 +198,7 @@ function App() {
     const coords = [lat, lon];
     setLatLonMarker(coords);
     setCenter(coords);
-    setZoom(10);
+    setZoom(getDefaultZoom());
   };
 
   // Determine target coordinates
