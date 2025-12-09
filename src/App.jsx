@@ -32,7 +32,7 @@ import Refresh from '@spectrum-icons/workflow/Refresh';
 import ShowMenu from '@spectrum-icons/workflow/ShowMenu';
 import { Map, Marker, ZoomControl } from 'pigeon-maps';
 import { isValidLatLon } from './utils';
-import { ADSB_SERVICE, AIRCRAFT_SERVICE, CALLSIGN_SERVICE, GEO_SERVICE, MAP_SERVICE, VOACAP_SERVICE } from './config';
+import { ADSB_SERVICE, AIRCRAFT_SERVICE, CALLSIGN_SERVICE, GEO_SERVICE, GRID_SERVICE, MAP_SERVICE, VOACAP_SERVICE } from './config';
 import MyPosition from './MyPosition.jsx';
 import { bearing, haversineDistance, maidenhead } from './utils/distance';
 import './App.css';
@@ -64,6 +64,12 @@ function App() {
   const [latLonError, setLatLonError] = useState(null);
   const [latLonMarker, setLatLonMarker] = useState(null);
 
+  // Maidenhead Grid Search
+  const [gridInput, setGridInput] = useState('');
+  const [gridError, setGridError] = useState(null);
+  const [gridMarker, setGridMarker] = useState(null);
+  const [isGridSearching, setIsGridSearching] = useState(false);
+
   // Prediction state
   const [isPredicting, setIsPredicting] = useState(false);
   const [voacapResults, setVoacapResults] = useState(null);
@@ -81,10 +87,16 @@ function App() {
     setSearchCallsign('');
     setSearchResult(null);
     setSearchError(null);
+
     setLatInput('');
     setLonInput('');
     setLatLonMarker(null);
     setLatLonError(null);
+
+    setGridInput('');
+    setGridMarker(null);
+    setGridError(null);
+
     setVoacapResults(null);
     setVoacapError(null);
     setCenter([myPosition[0], myPosition[1]]);
@@ -205,6 +217,7 @@ function App() {
   const getTargetCoords = () => {
     if (searchResult) return [searchResult.lat, searchResult.lon];
     if (latLonMarker) return latLonMarker;
+    if (gridMarker) return gridMarker;
     return null;
   };
 
@@ -300,6 +313,47 @@ function App() {
     }
   };
 
+  const handleGridSearch = async () => {
+    setGridError(null);
+    setSearchError(null);
+    setSearchResult(null);
+    setLatLonMarker(null);
+
+    const grid = gridInput.trim().toLowerCase();
+
+    if (!grid || (grid.length !== 4 && grid.length !== 6)) {
+      setGridError('Grid must be 4 or 6 characters.');
+      return;
+    }
+
+    try {
+      setIsGridSearching(true);
+
+      const response = await fetch(
+        `${GRID_SERVICE}?gridSquare=${encodeURIComponent(grid)}`
+      );
+
+      if (!response.ok) throw new Error(`Grid lookup failed: ${response.status}`);
+
+      const data = await response.json();
+
+      if (data?.position?.lat && data?.position?.lon) {
+        const { lat, lon } = data.position;
+
+        setGridMarker([lat, lon]);
+        setCenter([lat, lon]);
+        setZoom(getDefaultZoom());
+      } else {
+        setGridError('Grid not found.');
+      }
+    } catch (err) {
+      console.error(err);
+      setGridError('Grid not found.');
+    } finally {
+    setIsGridSearching(false);
+    }
+  };
+
   return (
     <Provider theme={defaultTheme}>
       <Flex direction="column" height="100vh">
@@ -342,6 +396,21 @@ function App() {
                   <Button variant="cta" onPress={handleLatLonSearch}>Go</Button>
                 </Flex>
 
+                {/* Maidenhead Grid Search */}
+                <Flex direction="row" gap="size-200" alignItems="end">
+                  <TextField
+                    label="Grid Square"
+                    placeholder="e.g., DM32 or DM32UV"
+                    value={gridInput}
+                    onChange={setGridInput}
+                    width="100%"
+                  />
+                  <Button variant="cta" onPress={handleGridSearch} isDisabled={isGridSearching} >
+                   {isGridSearching ? 'Searching...' : 'Go'}
+                  </Button>
+                </Flex>
+
+                {gridError && ( <Text UNSAFE_style={{ color: 'red' }}>{gridError}</Text>)}
                 {latLonError && <Text UNSAFE_style={{ color: 'red' }}>{latLonError}</Text>}
                 {searchError && <Text UNSAFE_style={{ color: 'red' }}>{searchError}</Text>}
 
@@ -350,11 +419,11 @@ function App() {
                   <View backgroundColor="gray-200" padding="size-100" borderRadius="regular" marginTop="size-200">
                     <Text><b>{searchResult.firstName}</b> {searchResult.callsign}</Text>
                     <br />
+                    <Text>Lat/Lon: {searchResult.lat.toFixed(4)}, {searchResult.lon.toFixed(4)}</Text>
+                    <br />
                     <Text>{searchResult.city}, {searchResult.state} {searchResult.zip}</Text>
                     <br />
                     <Text>Grid: {searchResult.grid}</Text>
-                    <br />
-                    <Text>Lat/Lon: {searchResult.lat.toFixed(4)}, {searchResult.lon.toFixed(4)}</Text>
                     <br />
                     <Text>Distance: {searchResult.distance.toFixed(2)} mi</Text>
                     <br />
@@ -377,8 +446,22 @@ function App() {
                   </View>
                 )}
 
+                {gridMarker && (
+                  <View backgroundColor="gray-200" padding="size-100" borderRadius="regular" marginTop="size-200">
+                    <Text><b>Grid Square</b></Text>
+                    <br />
+                    <Text>Grid: {gridInput.toUpperCase()}</Text>
+                    <br />
+                    <Text>Lat/Lon: {gridMarker[0].toFixed(5)}, {gridMarker[1].toFixed(5)}</Text>
+                    <br />
+                    <Text>Distance: {haversineDistance(myPosition, gridMarker, 'mi').toFixed(2)} mi</Text>
+                    <br />
+                    <Text>Bearing: {bearing(myPosition, gridMarker).toFixed(1)}°</Text>
+                  </View>
+                )}
+
                 {/* Prediction parameters: power and mode */}
-                {(searchResult || latLonMarker) && (
+                {(searchResult || latLonMarker || gridMarker) && (
                   <Flex direction="row" gap="size-200" alignItems="end">
                     <Picker
                       label="Power (Watts)"
@@ -405,7 +488,7 @@ function App() {
 		)}
 
                 {/* Predict Button + Modal */}
-                {(searchResult || latLonMarker) && (
+                {(searchResult || latLonMarker || gridMarker) && (
 	
                   <DialogTrigger onOpenChange={handlePredict}>
                     <Button variant="cta" isDisabled={isPredicting}>
@@ -655,6 +738,8 @@ function App() {
                 />
               )}
               {latLonMarker && <Marker anchor={latLonMarker} color="#007aff" />}
+
+              {gridMarker && <Marker anchor={gridMarker} color="#007aff" />}
             </Map>
           </View>
         </Flex>
