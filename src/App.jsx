@@ -543,6 +543,8 @@ function App() {
                                         return '#f44336'; // red
                                       };
 
+                                      const currentHourUTC = new Date().getUTCHours();
+
                                       return (
                                         <div style={{ overflowX: 'auto', marginTop: 10 }}>
                                           <table style={{ borderCollapse: 'collapse', width: '100%' }}>
@@ -555,27 +557,40 @@ function App() {
                                               </tr>
                                             </thead>
                                             <tbody>
-                                              {hourRows.map((r, idx) => (
-                                                <tr key={idx}>
-                                                  <td style={{ border: '1px solid #ccc', padding: '4px' }}>{r.time}</td>
-                                                  {allBands.map(b => {
-                                                    const pct = r[b];
-                                                    return (
-                                                      <td
-                                                        key={b}
-                                                        style={{
-                                                          border: '1px solid #ccc',
-                                                          padding: '4px',
-                                                          textAlign: 'center',
-                                                          backgroundColor: getColor(pct)
-                                                        }}
-                                                      >
-                                                        {pct !== '' ? `${pct}%` : ''}
-                                                      </td>
-                                                    );
-                                                  })}
-                                                </tr>
-                                              ))}
+                                              {hourRows.map((r, idx) => {
+                                                const isCurrentHour = parseInt(r.time.split(':')[0], 10) === currentHourUTC;
+                                                return (
+                                                  <tr key={idx}>
+                                                    <td
+                                                      style={{
+                                                        border: '1px solid #ccc',
+                                                        padding: '4px',
+                                                        backgroundColor: isCurrentHour ? '#2196f3' : '#ffffff', // blue highlight
+                                                        color: isCurrentHour ? '#ffffff' : '#000000', // white text on blue
+                                                        fontWeight: isCurrentHour ? 'bold' : 'normal'
+                                                      }}
+                                                    >
+                                                      {r.time}
+                                                    </td>
+                                                    {allBands.map(b => {
+                                                      const pct = r[b];
+                                                      return (
+                                                        <td
+                                                          key={b}
+                                                          style={{
+                                                            border: '1px solid #ccc',
+                                                            padding: '4px',
+                                                            textAlign: 'center',
+                                                            backgroundColor: getColor(pct)
+                                                          }}
+                                                        >
+                                                          {pct !== '' ? `${pct}%` : ''}
+                                                        </td>
+                                                      );
+                                                    })}
+                                                  </tr>
+                                                );
+                                              })}
                                             </tbody>
                                           </table>
                                         </div>
