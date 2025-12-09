@@ -223,7 +223,6 @@ function App() {
     return `${f} MHz`;
   };
 
-  // VOACAP prediction handler
   const handlePredict = async () => {
     const target = getTargetCoords();
     if (!target) return;
@@ -256,7 +255,7 @@ function App() {
       const nowHour = now.getUTCHours();
       const nowMinutes = now.getUTCMinutes();
 
-      // "Now" predictions (current hour)
+      // "Now" predictions (filtered ≥ MIN_RELIABILITY)
       const currentHour = data[nowHour];
       const nowBands = Object.entries(currentHour.freqRel)
         .map(([freq, rel]) => ({
@@ -264,13 +263,12 @@ function App() {
           band: freqToBand(freq),
           reliability: Math.round(rel * 100),
         }))
-        .filter((b) => b.reliability >= MIN_RELIABILITY)
+        .filter(b => b.reliability >= MIN_RELIABILITY)
         .sort((a, b) => parseFloat(a.freq) - parseFloat(b.freq));
 
-      // "Later" predictions: next UTC hour onward
+      // "Later" predictions (filtered ≥ MIN_RELIABILITY)
       const futureBands = [];
       const startHour = (nowMinutes === 0) ? (nowHour + 1) % 24 : (nowHour + 1) % 24;
-
       for (let i = 0; i < FUTURE_HOURS; i++) {
         const hourIndex = (startHour + i) % 24;
         const entry = data[hourIndex];
@@ -287,7 +285,13 @@ function App() {
         });
       }
 
-      setVoacapResults({ now: nowBands, future: futureBands });
+      // Save filtered + raw
+      setVoacapResults({
+        now: nowBands,
+        future: futureBands,
+        raw: data // store raw 24-hour array for full table
+      });
+
     } catch (err) {
       console.error(err);
       setVoacapError('Failed to get prediction.');
@@ -419,6 +423,7 @@ function App() {
                               <TabList>
                                 <Item key="now">Now</Item>
                                 <Item key="later">Later</Item>
+                                <Item key="plan24">24-hour Plan</Item>
                               </TabList>
                               <TabPanels>
                                 <Item key="now">
@@ -505,6 +510,78 @@ function App() {
                                       });
                                     })()}
                                   </Flex>
+                                </Item>
+
+                                <Item key="plan24">
+                                  {voacapResults?.raw && (
+                                    (() => {
+                                      const allBands = ['80m','60m','40m','30m','20m','17m','15m','12m','10m'];
+
+                                      const hourRows = [];
+                                      for (let hour = 0; hour < 24; hour++) {
+                                        const row = { time: `${String(hour).padStart(2, '0')}:00 UTC` };
+                                        allBands.forEach(b => { row[b] = ''; });
+
+                                        const hourData = voacapResults.raw[hour];
+                                        if (hourData) {
+                                          Object.entries(hourData.freqRel).forEach(([freq, rel]) => {
+                                            const band = freqToBand(freq);
+                                            if (band && allBands.includes(band)) {
+                                              row[band] = Math.round(rel * 100); // store as number
+                                            }
+                                          });
+                                        }
+
+                                        hourRows.push(row);
+                                      }
+
+                                      const getColor = (pct) => {
+                                        if (pct === '' || pct == null) return '#ffffff';
+                                        if (pct >= 90) return '#4caf50'; // green
+                                        if (pct >= 70) return '#ffeb3b'; // yellow
+                                        if (pct >= 50) return '#ff9800'; // orange
+                                        return '#f44336'; // red
+                                      };
+
+                                      return (
+                                        <div style={{ overflowX: 'auto', marginTop: 10 }}>
+                                          <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+                                            <thead>
+                                              <tr>
+                                                <th style={{ border: '1px solid #ccc', padding: '4px', background: '#f0f0f0' }}>Time (UTC)</th>
+                                                {allBands.map(b => (
+                                                  <th key={b} style={{ border: '1px solid #ccc', padding: '4px', background: '#f0f0f0' }}>{b}</th>
+                                                ))}
+                                              </tr>
+                                            </thead>
+                                            <tbody>
+                                              {hourRows.map((r, idx) => (
+                                                <tr key={idx}>
+                                                  <td style={{ border: '1px solid #ccc', padding: '4px' }}>{r.time}</td>
+                                                  {allBands.map(b => {
+                                                    const pct = r[b];
+                                                    return (
+                                                      <td
+                                                        key={b}
+                                                        style={{
+                                                          border: '1px solid #ccc',
+                                                          padding: '4px',
+                                                          textAlign: 'center',
+                                                          backgroundColor: getColor(pct)
+                                                        }}
+                                                      >
+                                                        {pct !== '' ? `${pct}%` : ''}
+                                                      </td>
+                                                    );
+                                                  })}
+                                                </tr>
+                                              ))}
+                                            </tbody>
+                                          </table>
+                                        </div>
+                                      );
+                                    })()
+                                  )}
                                 </Item>
 
                               </TabPanels>
