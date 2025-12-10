@@ -646,36 +646,51 @@ function App() {
                                             <tbody>
                                               {hourRows.map((r, idx) => {
                                                 const isCurrentHour = parseInt(r.time.split(':')[0], 10) === currentHourUTC;
+
+                                                // Repeat header every 6 rows
+                                                const showRepeatHeader = idx > 0 && idx % 6 === 0;
+
                                                 return (
-                                                  <tr key={idx}>
-                                                    <td
-                                                      style={{
-                                                        border: '1px solid #ccc',
-                                                        padding: '4px',
-                                                        backgroundColor: isCurrentHour ? '#2196f3' : '#ffffff', // blue highlight
-                                                        color: isCurrentHour ? '#ffffff' : '#000000', // white text on blue
-                                                        fontWeight: isCurrentHour ? 'bold' : 'normal'
-                                                      }}
-                                                    >
-                                                      {r.time}
-                                                    </td>
-                                                    {allBands.map(b => {
-                                                      const pct = r[b];
-                                                      return (
-                                                        <td
-                                                          key={b}
-                                                          style={{
-                                                            border: '1px solid #ccc',
-                                                            padding: '4px',
-                                                            textAlign: 'center',
-                                                            backgroundColor: getColor(pct)
-                                                          }}
-                                                        >
-                                                          {pct !== '' ? `${pct}%` : ''}
-                                                        </td>
-                                                      );
-                                                    })}
-                                                  </tr>
+                                                  <>
+                                                    {showRepeatHeader && (
+                                                      <tr key={`repeat-${idx}`}>
+                                                        <th style={{ border: '1px solid #ccc', padding: '4px', background: '#f0f0f0' }}>Time (UTC)</th>
+                                                        {allBands.map(b => (
+                                                          <th key={`repeat-${idx}-${b}`} style={{ border: '1px solid #ccc', padding: '4px', background: '#f0f0f0' }}>{b}</th>
+                                                        ))}
+                                                      </tr>
+                                                    )}
+
+                                                    <tr key={idx}>
+                                                      <td
+                                                        style={{
+                                                          border: '1px solid #ccc',
+                                                          padding: '4px',
+                                                          backgroundColor: isCurrentHour ? '#2196f3' : '#ffffff',
+                                                          color: isCurrentHour ? '#ffffff' : '#000000',
+                                                          fontWeight: isCurrentHour ? 'bold' : 'normal'
+                                                        }}
+                                                      >
+                                                        {r.time}
+                                                      </td>
+                                                      {allBands.map(b => {
+                                                        const pct = r[b];
+                                                        return (
+                                                          <td
+                                                            key={b}
+                                                            style={{
+                                                              border: '1px solid #ccc',
+                                                              padding: '4px',
+                                                              textAlign: 'center',
+                                                              backgroundColor: getColor(pct)
+                                                            }}
+                                                          >
+                                                            {pct !== '' ? `${pct}%` : ''}
+                                                          </td>
+                                                        );
+                                                      })}
+                                                    </tr>
+                                                  </>
                                                 );
                                               })}
                                             </tbody>
