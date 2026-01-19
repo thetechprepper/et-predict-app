@@ -633,13 +633,29 @@ function App() {
                                       const currentHourUTC = new Date().getUTCHours();
 
                                       return (
-                                        <div style={{ overflowX: 'auto', marginTop: 10 }}>
-                                          <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+                                        <div style={{ marginTop: 10 }}>
+                                          <table style={{
+                                            borderCollapse: 'collapse',
+                                            width: '100%',
+                                            position: 'relative', // Required for sticky table headers
+                                          }}>
                                             <thead>
                                               <tr>
-                                                <th style={{ border: '1px solid #ccc', padding: '4px', background: '#f0f0f0' }}>Time (UTC)</th>
+                                                <th style={{
+                                                  border: '1px solid #ccc',
+                                                  padding: '4px',
+                                                  background: '#f0f0f0',
+                                                  position: 'sticky',
+                                                  top: 0, // Required for sticky to work
+                                                }}>Time (UTC)</th>
                                                 {allBands.map(b => (
-                                                  <th key={b} style={{ border: '1px solid #ccc', padding: '4px', background: '#f0f0f0' }}>{b}</th>
+                                                  <th key={b} style={{
+                                                    border: '1px solid #ccc',
+                                                    padding: '4px',
+                                                    background: '#f0f0f0',
+                                                    position: 'sticky',
+                                                    top: 0, // Required for sticky to work
+                                                  }}>{b}</th>
                                                 ))}
                                               </tr>
                                             </thead>
@@ -647,20 +663,8 @@ function App() {
                                               {hourRows.map((r, idx) => {
                                                 const isCurrentHour = parseInt(r.time.split(':')[0], 10) === currentHourUTC;
 
-                                                // Repeat header every 6 rows
-                                                const showRepeatHeader = idx > 0 && idx % 6 === 0;
-
                                                 return (
                                                   <>
-                                                    {showRepeatHeader && (
-                                                      <tr key={`repeat-${idx}`}>
-                                                        <th style={{ border: '1px solid #ccc', padding: '4px', background: '#f0f0f0' }}>Time (UTC)</th>
-                                                        {allBands.map(b => (
-                                                          <th key={`repeat-${idx}-${b}`} style={{ border: '1px solid #ccc', padding: '4px', background: '#f0f0f0' }}>{b}</th>
-                                                        ))}
-                                                      </tr>
-                                                    )}
-
                                                     <tr key={idx}>
                                                       <td
                                                         style={{
