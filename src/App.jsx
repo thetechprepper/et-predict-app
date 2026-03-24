@@ -41,7 +41,7 @@ function App() {
   const MIN_RELIABILITY = 90; // Minimum reliability threshold
   const FUTURE_HOURS = 24;    // Number of hours for "Later"
 
-  const DEFAULT_ZOOM_REGION = 10; // Default zoom level for country-specific maps (i.e. US and CA).
+  const DEFAULT_ZOOM_REGION = 6; // Default zoom level for country-specific maps (i.e. US and CA).
   const DEFAULT_ZOOM_WORLD = 6;   // Default zoom level for world map.
 
   const [myPosition, setMyPosition] = useState([33.0, -112.0]);
